@@ -1,0 +1,26 @@
+# 备份与临时文件
+*.bak
+*.bak-*
+*.old
+*.orig
+*~
+*.swp
+*.swo
+
+# 运行时状态 (不应进入仓库)
+fish_variables
+fish_history
+.DS_Store
+
+# 编辑器/工具残留
+.idea/
+.vscode/
+node_modules/
+__pycache__/
+
+# 可能的敏感信息
+*.pem
+*.key
+.env
+.env.*
+!.env.example

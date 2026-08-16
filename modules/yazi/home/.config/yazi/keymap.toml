@@ -1,0 +1,4 @@
+[[mgr.prepend_keymap]]
+on = ["<C-e>"]
+run = "shell 'thunar -q; thunar .' --orphan"
+desc = "Open Thunar here"

@@ -1,0 +1,19 @@
+[[plugin.deps]]
+use = "yazi-rs/plugins:piper"
+rev = "598cdb6"
+hash = "d99cfbc3812e7738505f9e4bedb759cd"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:full-border"
+rev = "598cdb6"
+hash = "7b625412411be411153886894d9acaf"
+
+[[plugin.deps]]
+use = "linxuan-sys/docx-preview"
+rev = "9448288"
+hash = "ccbbca8053585b2e637858dc416e4044"
+
+[[flavor.deps]]
+use = "yazi-rs/flavors:catppuccin-mocha"
+rev = "0f9204b"
+hash = "7dfe41c9c3d9be76da8a844263d0bbed"

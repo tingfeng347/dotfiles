@@ -1,0 +1,6 @@
+# zsh 自定义插件清单: 仓库名|固定 commit
+# post_install 按此清单 clone 到 $ZSH_CUSTOM/plugins/<name>
+# 格式: <github 仓库 org/repo>|<pin 的 commit>
+Aloxaf/fzf-tab|24105b15714bfec37989ed5c5b6e60f572253019
+zsh-users/zsh-autosuggestions|85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
+zsh-users/zsh-syntax-highlighting|1d85c692615a25fe2293bdd44b34c217d5d2bf04

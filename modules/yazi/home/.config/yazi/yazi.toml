@@ -1,0 +1,36 @@
+[opener]
+typora = [
+  { run = 'env GTK_THEME=Adwaita:dark typora %s', orphan = true, desc = "Open with Typora" },
+]
+ONLYOFFICE = [
+  { run = 'onlyoffice-desktopeditors %s1', orphan = true, desc = "Open with ONLYOFFICE" },
+]
+kate = [
+  { run = 'kate %s', orphan = true, desc = "Open with Kate" },
+]
+
+[open]
+prepend_rules = [
+  { url = "*.md", use = "typora" },
+  { url = "*.pdf", use = "ONLYOFFICE" },
+  { url = "*.txt", use = "kate" },
+  { url = "*.toml", use = "kate" },
+  { url = "*.yaml", use = "kate" },
+  { url = "*.json", use = "kate" },
+]
+
+[plugin]
+prepend_previewers = [
+  { url = "*.docx", run = "docx-preview" },
+  { url = "*.sql", run = 'piper -- CLICOLOR_FORCE=1 bat -p --color=always --theme="Monokai Extended Bright" --wrap=never "$1"' },
+  { url = "*.md", run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dracula "$1"' },
+]
+
+[mgr]
+ratio = [1, 3, 3]
+
+[preview]
+# The terminal does not report its pixel dimensions to Yazi, so avoid the
+# default cache limit keeping PDF pages smaller than the preview pane.
+max_width = 2400
+max_height = 2400
