@@ -1,12 +1,14 @@
 #!/bin/bash
 # ============================================================
-# install.sh — dotfiles 一键安装入口
+# uninstall.sh — dotfiles 卸载入口
 #
 # 用法:
-#   ./install.sh               交互式选择模块
-#   ./install.sh -y            安装全部模块 (自动确认)
-#   ./install.sh fish zsh      只安装指定模块
-#   ./install.sh --dry-run     仅预览, 不实际修改
+#   ./uninstall.sh                    卸载已部署的配置 (默认保留已安装的包)
+#   ./uninstall.sh -y                 自动确认
+#   ./uninstall.sh --remove-packages  同时卸载安装过的包 (fd/fastfetch 等)
+#   ./uninstall.sh --purge            同时删除第三方数据 (oh-my-zsh/fisher/tpm 等)
+#   ./uninstall.sh fish zsh           只卸载指定模块
+#   ./uninstall.sh --dry-run          仅预览, 不实际删除
 # ============================================================
 set -euo pipefail
 
@@ -24,13 +26,17 @@ fi
 
 AUTO_YES=0
 DRY_RUN=""
+REMOVE_PACKAGES=0
+PURGE=0
 SELECTED_ARGS=()
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -y|--yes) AUTO_YES=1 ;;
         --dry-run) DRY_RUN=1 ;;
-        -h|--help) printf '用法: %s [-y|--yes] [--dry-run] [模块名...]\n' "$0"; exit 0 ;;
+        --remove-packages) REMOVE_PACKAGES=1 ;;
+        --purge) PURGE=1 ;;
+        -h|--help) printf '用法: %s [-y|--yes] [--dry-run] [--remove-packages] [--purge] [模块名...]\n' "$0"; exit 0 ;;
         *) SELECTED_ARGS+=("$1") ;;
     esac
     shift
@@ -48,13 +54,11 @@ fi
 
 echo ""
 echo "  ╔══════════════════════════════════════╗"
-echo "  ║   dotfiles 一键安装 (Ubuntu/Arch)    ║"
+echo "  ║   dotfiles 卸载 (Ubuntu/Arch)        ║"
 echo "  ╚══════════════════════════════════════╝"
 echo ""
 detect_distro
 log "检测到发行版: $DISTRO_ID"
-
-install_x_cmd
 
 SELECTED=()
 
@@ -79,7 +83,7 @@ else
         fi
         printf "  %2d) %-10s %s\n" "$((i+1))" "$m" "$desc"
     done
-    printf "  %2d) %s\n" "$((${#AVAILABLE[@]}+1))" "全部安装"
+    printf "  %2d) %s\n" "$((${#AVAILABLE[@]}+1))" "全部卸载"
     echo ""
     read -rp "选择模块编号 (可逗号分隔, 回车=全部): " -r CHOICE || CHOICE=""
     [ -z "$CHOICE" ] && CHOICE="$(( ${#AVAILABLE[@]} + 1 ))"
@@ -102,39 +106,26 @@ else
 fi
 
 [ "${#SELECTED[@]}" -gt 0 ] || die "未选择任何模块"
-log "将安装模块: ${SELECTED[*]}"
+log "将卸载模块: ${SELECTED[*]}"
+if [ "$REMOVE_PACKAGES" -eq 1 ]; then
+    warn "将同时卸载这些模块安装过的包 (含 fd/fastfetch 等)"
+else
+    log "保留已安装的包 (默认不卸载 fd/fastfetch 等)"
+fi
+[ "$PURGE" -eq 1 ] && warn "将同时删除第三方数据 (oh-my-zsh/fisher/tpm/yazi 插件等)"
+
 if [ "$AUTO_YES" -ne 1 ] && [ -z "$DRY_RUN" ]; then
-    confirm "继续? " || die "已取消"
+    confirm "继续卸载? " || die "已取消"
 fi
 
 # ----------------------------------------------------------
-# 逐模块安装
+# 逐模块卸载
 # ----------------------------------------------------------
 for m in "${SELECTED[@]}"; do
-    install_module "$m"
+    uninstall_module "$m"
 done
 
-# ----------------------------------------------------------
-# 若装了 fish, 设为默认登录 shell
-# ----------------------------------------------------------
-if in_array "fish" "${SELECTED[@]}" && command -v fish >/dev/null 2>&1; then
-    FISH_BIN="$(command -v fish)"
-    if ! grep -qxF "$FISH_BIN" /etc/shells 2>/dev/null; then
-        warn "$FISH_BIN 不在 /etc/shells, 跳过 chsh (需先手动添加)"
-    elif [ "$SHELL" = "$FISH_BIN" ]; then
-        log "默认 shell 已是 fish, 跳过"
-    elif [ -n "$DRY_RUN" ]; then
-        warn "(dry-run) 将执行: chsh -s $FISH_BIN"
-    else
-        log "设置默认登录 shell: $FISH_BIN"
-        chsh -s "$FISH_BIN" || warn "chsh 失败, 可手动执行: chsh -s $FISH_BIN"
-    fi
-fi
-
 echo ""
-ok "全部完成"
-[ -n "$DRY_RUN" ] && warn "本次为 dry-run，未做任何实际修改"
-echo "  备份目录: $BACKUP_ROOT"
-echo "  插件安装: fish 用 fisher, zsh 用 oh-my-zsh 清单, tmux 用 tpm"
-echo "  LazyVim 插件在首次用 lazyvim 命令启动时自动安装"
-echo "  本地改了配置后: ./capture.sh -y 复制回仓库, 再 git 提交同步"
+ok "卸载完成"
+[ -n "$DRY_RUN" ] && warn "本次为 dry-run，未做任何实际删除"
+echo "  原文件备份仍保留在: $BACKUP_ROOT (如需还原请手动处理)"

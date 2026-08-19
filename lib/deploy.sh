@@ -152,3 +152,84 @@ install_module() { # install_module <模块名>
     deploy_module "$module"
     run_post_install "$module"
 }
+
+# 卸载单个模块的 home/ 树 (与 deploy_module 相反: 删除已部署到 $HOME 的文件)
+remove_module() { # remove_module <模块名>
+    local module="$1"
+    local src="$MODULES_DIR/$module/home"
+    [ -d "$src" ] || return 0
+    # shellcheck disable=SC1090
+    [ -f "$MODULES_DIR/$module/module.conf" ] && . "$MODULES_DIR/$module/module.conf"
+
+    local removed=0 skipped=0
+    while IFS= read -r -d '' rel; do
+        local dest="$HOME/$rel"
+        local s="$src/$rel"
+        if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+            skipped=$((skipped+1))
+            continue
+        fi
+        # 本地已改动 -> 先备份再删, 避免丢失本地修改
+        if [ -f "$dest" ] && ! cmp -s "$s" "$dest"; then
+            backup_target "$dest" "$s" "$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)"
+        fi
+        if [ -n "$DRY_RUN" ]; then
+            warn "(dry-run) 将删除: $dest"
+        else
+            rm -f "$dest"
+            log "已删除: $dest"
+        fi
+        removed=$((removed+1))
+    done < <(cd "$src" && find . -type f -print0 | sed -z 's|^\./||')
+
+    ok "模块 $module: 删除 $removed, 不存在跳过 $skipped"
+}
+
+# 删除模块的第三方数据 (post_install 克隆的插件/包管理器, 非 home/ 树)
+purge_module() { # purge_module <模块名>
+    local module="$1" paths=()
+    case "$module" in
+        fish)    paths=("$HOME/.config/fish/functions/fisher.fish" "$HOME/.local/share/fisher") ;;
+        zsh)     paths=("$HOME/.oh-my-zsh") ;;
+        tmux)    paths=("$HOME/.tmux/plugins") ;;
+        yazi)    paths=("$HOME/.config/yazi/plugins" "$HOME/.config/yazi/flavors") ;;
+        lazyvim) paths=("$HOME/.local/share/lazyvim" "$HOME/.local/state/lazyvim" "$HOME/.cache/lazyvim") ;;
+        *)       return 0 ;;
+    esac
+    local p
+    for p in "${paths[@]}"; do
+        if [ -e "$p" ] || [ -L "$p" ]; then
+            if [ -n "$DRY_RUN" ]; then
+                warn "(dry-run) 将删除第三方数据: $p"
+            else
+                rm -rf "$p"
+                log "已删除第三方数据: $p"
+            fi
+        fi
+    done
+}
+
+# 卸载模块 (删除部署 + 可选卸载包 + 可选清理第三方数据)
+uninstall_module() { # uninstall_module <模块名>
+    local module="$1"
+    # shellcheck disable=SC1090
+    [ -f "$MODULES_DIR/$module/module.conf" ] && . "$MODULES_DIR/$module/module.conf"
+    local desc="${MODULE_DESC:-$module}"
+    echo ""
+    log "=== 卸载模块: $module — $desc ==="
+
+    remove_module "$module"
+
+    if [ "${REMOVE_PACKAGES:-0}" -eq 1 ]; then
+        local pkg_file=""
+        case "$DISTRO_ID" in
+            arch)    pkg_file="$MODULES_DIR/$module/packages.arch" ;;
+            *)       pkg_file="$MODULES_DIR/$module/packages.ubuntu" ;;
+        esac
+        remove_package_list "$pkg_file"
+    fi
+
+    if [ "${PURGE:-0}" -eq 1 ]; then
+        purge_module "$module"
+    fi
+}

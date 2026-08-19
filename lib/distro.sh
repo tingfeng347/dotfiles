@@ -98,6 +98,49 @@ install_package_list() { # install_package_list <文件路径>
     return 0
 }
 
+# 卸载单个包 (已安装才卸载; 其余跳过)
+pkg_remove() { # pkg_remove <包名...>
+    local pkgs=("$@") installed=()
+    for p in "${pkgs[@]}"; do
+        if is_installed "$p"; then
+            installed+=("$p")
+        else
+            log "未安装，跳过: $p"
+        fi
+    done
+    [ "${#installed[@]}" -eq 0 ] && return 0
+    log "卸载: ${installed[*]}"
+    [ -n "$DRY_RUN" ] && return 0
+    case "$DISTRO_ID" in
+        arch) sudo pacman -Rns --noconfirm "${installed[@]}" ;;
+        *) sudo apt-get remove -y "${installed[@]}" ;;
+    esac
+}
+
+# 解析包清单文件并卸载 (与 install_package_list 对称)
+remove_package_list() { # remove_package_list <文件路径>
+    local list_file="$1" line
+    [ -f "$list_file" ] || return 0
+    local official=() aur=()
+    while IFS= read -r line; do
+        [[ "$line" =~ ^#.*$ ]] && continue
+        [ -z "$line" ] && continue
+        if [[ "$line" == aur:* ]]; then
+            aur+=("${line#aur:}")
+        else
+            official+=("$line")
+        fi
+    done < "$list_file"
+    # Arch 下 AUR 包与官方包都走 pacman 卸载; 其余发行版 AUR 本就不安装
+    if [ "$DISTRO_ID" = "arch" ]; then
+        official+=("${aur[@]}")
+        aur=()
+    fi
+    [ "${#official[@]}" -gt 0 ] && pkg_remove "${official[@]}"
+    [ "${#aur[@]}" -gt 0 ] && warn "跳过 AUR 包卸载: ${aur[*]}"
+    return 0
+}
+
 # 检测 x-cmd 是否已安装 (~/.x-cmd.root/X 存在即视为已安装)
 has_x_cmd() {
     [ -f "$HOME/.x-cmd.root/X" ]
