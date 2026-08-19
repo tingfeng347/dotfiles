@@ -9,9 +9,8 @@ set -gx STARSHIP_CONFIG ~/.config/starship.toml
 starship init fish | source
 zoxide init fish --cmd cd | source
 
-# fzf tab completion
-bind tab _fzf_tab_completion
-bind --mode insert tab _fzf_tab_completion
+# fifc (fzf 补全) 用 nvim 打开文件
+set -gx fifc_editor nvim
 
 # Alt+C: fzf 选择目录并 cd
 set -gx FZF_ALT_C_COMMAND 'fd --type d --hidden --exclude .git --exclude node_modules 2>/dev/null'
