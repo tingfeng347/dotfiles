@@ -74,12 +74,11 @@ sync_module() { # sync_module <模块名>
     done
 
     # 无 CAPTURE_PATHS 时回退为整棵 home/ 树
-    local entries
-    if [ "${#CAPTURE_PATHS[@]:-0}" -gt 0 ]; then
+    local entries=()
+    if declare -p CAPTURE_PATHS >/dev/null 2>&1; then
         entries=("${CAPTURE_PATHS[@]}")
-    else
-        entries=("$HOME|")
     fi
+    [ "${#entries[@]}" -eq 0 ] && entries=("$HOME|")
 
     local stamp="" backup_dir=""
     if [ -z "$DRY_RUN" ]; then
