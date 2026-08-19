@@ -20,15 +20,24 @@
 ./capture.sh -y       # 采集全部
 ./capture.sh fish     # 只采集指定模块
 ./capture.sh --dry-run
+
+# 卸载（默认只删配置，保留已装的包）
+./uninstall.sh                          # 交互式菜单
+./uninstall.sh -y                       # 卸载全部模块
+./uninstall.sh --remove-packages        # 同时卸载装过的包（fd/fastfetch 等）
+./uninstall.sh --purge                  # 同时删除第三方数据（oh-my-zsh/fisher/tpm 等）
+./uninstall.sh fish zsh                 # 只卸载指定模块
+./uninstall.sh --dry-run
 ```
 
-安装器自动检测发行版（`/etc/os-release`）：Arch 走 pacman（`aur:` 前缀走 paru/yay），Ubuntu/Debian 走 apt。冲突文件先备份到 `~/.dotfiles-backup/<时间戳>/` 再覆盖。
+安装器自动检测发行版（`/etc/os-release`）：Arch 走 pacman（`aur:` 前缀走 paru/yay），Ubuntu/Debian 走 apt。冲突文件先备份到 `~/.dotfiles-backup/<时间戳>/` 再覆盖。若本次安装了 fish，会自动执行 `chsh -s` 将其设为默认登录 shell（失败仅警告）。
 
 ## 目录结构
 
 ```
 dotfiles/
 ├── install.sh          一键安装入口
+├── uninstall.sh        卸载入口（默认保留已装的包）
 ├── update.sh           覆盖/同步本机配置为仓库内容（清理已删除文件）
 ├── capture.sh          反向采集本机配置进仓库
 ├── lib/                引擎（扩充模块时无需改动）
@@ -70,7 +79,7 @@ dotfiles/
 
 ## 已知事项
 
-- Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`），包清单已区分处理；如 fish/yazi 里用到 `fd` 命令，可能需要 `sudo ln -s $(which fdfind) /usr/local/bin/fd`。
+- Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`），包清单已区分处理；fish 模块的 post_install 会自动创建 `~/.local/bin/fd` 软链，yazi/lazyvim 等其它用到 `fd` 的模块若未装 fish，可手动 `ln -s $(which fdfind) ~/.local/bin/fd`。
 - Ubuntu 仓库的 neovim 版本较旧，LazyVim 建议从 GitHub releases 或 ppa 安装新版本，再运行本安装器。
 - `./install.sh` 需要 sudo（装包）；以普通用户运行，不要用 root。
 - fzf 的 shell 集成（keybind 等）在 fish/zsh 模块内；`modules/fzf` 只负责二进制与配套工具。
