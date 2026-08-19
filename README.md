@@ -1,6 +1,6 @@
 # dotfiles — 跨发行版一键安装 (Ubuntu / Arch)
 
-个人 shell 与终端工具配置仓库：fish / zsh / tmux / yazi / fzf / LazyVim，支持动态扩充。
+个人 shell 与终端工具配置仓库：fish / zsh / starship / tmux / yazi / fzf / LazyVim，支持动态扩充。
 
 ## 快速开始
 
@@ -47,6 +47,7 @@ dotfiles/
 ├── modules/            动态扩充点：加一个目录 = 加一个模块
 │   ├── fish/           fish + fisher 插件清单
 │   ├── zsh/            zsh + oh-my-zsh + 自定义插件清单
+│   ├── starship/       starship 提示符主题 (fish/zsh 共用)
 │   ├── tmux/           tmux + tpm 插件
 │   ├── yazi/           yazi 文件管理器
 │   ├── fzf/            fzf + 配套工具（纯包模块）

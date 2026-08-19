@@ -1,6 +1,7 @@
 zsh
 git
 curl
+starship
 fzf
 eza
 bat
