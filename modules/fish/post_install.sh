@@ -16,3 +16,10 @@ if [ -f "$HOME/.config/fish/functions/fisher.fish" ]; then
     log "按 fish_plugins 清单更新插件..."
     fish -c 'fisher update' || warn "fisher update 失败"
 fi
+
+# Ubuntu 的 fd 包名为 fd-find, 二进制是 fdfind; 补一个 fd 软链到 ~/.local/bin
+if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+    ok "已创建 fd 软链: $HOME/.local/bin/fd -> $(command -v fdfind)"
+fi
