@@ -54,6 +54,8 @@ echo ""
 detect_distro
 log "检测到发行版: $DISTRO_ID"
 
+install_x_cmd
+
 SELECTED=()
 
 if [ "${#SELECTED_ARGS[@]}" -gt 0 ]; then

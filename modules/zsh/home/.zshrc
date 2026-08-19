@@ -166,6 +166,8 @@ cf() {
 
 
 
+alias lazyvim="NVIM_APPNAME=lazyvim nvim"
+
 # x-cmd 初始化（zsh 包装）
 export PATH="$HOME/.x-cmd.root/local/data/pkg/sphere/X/l/j/h/bin:$HOME/.x-cmd.root/bin:$PATH"
 x() {
@@ -178,8 +180,6 @@ x() {
 
 # 手动加载 x-cmd 的 zsh-autosuggestions（已通过 x theme feature use zshplugin never 禁用自动加载中的 syntax-highlighting）
 ___x_cmd zshplugin load zsh-autosuggestions zsh-config
-
-alias lazyvim="NVIM_APPNAME=lazyvim nvim"
 
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:./node_modules/.bin"

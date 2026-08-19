@@ -97,3 +97,22 @@ install_package_list() { # install_package_list <文件路径>
     [ "${#aur[@]}" -gt 0 ] && pkg_install_aur "${aur[@]}"
     return 0
 }
+
+# 检测 x-cmd 是否已安装 (~/.x-cmd.root/X 存在即视为已安装)
+has_x_cmd() {
+    [ -f "$HOME/.x-cmd.root/X" ]
+}
+
+# 安装 x-cmd (官方安装脚本 eval "$(curl https://get.x-cmd.com)")
+install_x_cmd() {
+    if has_x_cmd; then
+        log "x-cmd 已安装，跳过"
+        return 0
+    fi
+    command -v curl >/dev/null || die "需要 curl 才能安装 x-cmd"
+    log "未检测到 x-cmd，正在安装..."
+    [ -n "$DRY_RUN" ] && return 0
+    eval "$(curl https://get.x-cmd.com)"
+    has_x_cmd && ok "x-cmd 安装完成" || warn "x-cmd 安装脚本已执行，但未检测到 ~/.x-cmd.root/X，请检查"
+    return 0
+}

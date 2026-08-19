@@ -27,6 +27,10 @@ if [ "$EUID" -eq 0 ]; then
     die "请以普通用户运行，不要用 root"
 fi
 
+AUTO_YES=0
+DRY_RUN=""
+SELECTED_ARGS=()
+
 detect_distro
 
 if ! command -v rsync >/dev/null; then
@@ -35,9 +39,7 @@ if ! command -v rsync >/dev/null; then
     command -v rsync >/dev/null || die "rsync 安装失败，请手动安装后重试"
 fi
 
-AUTO_YES=0
-DRY_RUN=""
-SELECTED_ARGS=()
+install_x_cmd
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
