@@ -26,7 +26,14 @@ MODULES_DIR="$REPO_DIR/modules"
 if [ "$EUID" -eq 0 ]; then
     die "请以普通用户运行，不要用 root"
 fi
-command -v rsync >/dev/null || die "需要 rsync"
+
+detect_distro
+
+if ! command -v rsync >/dev/null; then
+    warn "未检测到 rsync，正在安装..."
+    pkg_install rsync
+    command -v rsync >/dev/null || die "rsync 安装失败，请手动安装后重试"
+fi
 
 AUTO_YES=0
 DRY_RUN=""
