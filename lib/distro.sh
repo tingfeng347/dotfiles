@@ -112,7 +112,8 @@ install_x_cmd() {
     command -v curl >/dev/null || die "需要 curl 才能安装 x-cmd"
     log "未检测到 x-cmd，正在安装..."
     [ -n "$DRY_RUN" ] && return 0
-    eval "$(curl https://get.x-cmd.com)"
+    # x-cmd 安装脚本会引用 $ZSH_VERSION 等未定义变量, 需在子 shell 中关闭 nounset
+    ( set +u; eval "$(curl https://get.x-cmd.com)" )
     has_x_cmd && ok "x-cmd 安装完成" || warn "x-cmd 安装脚本已执行，但未检测到 ~/.x-cmd.root/X，请检查"
     return 0
 }
