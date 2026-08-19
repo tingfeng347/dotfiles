@@ -44,19 +44,11 @@ end
 
 # grub
 abbr grub 'LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 sudo grub-mkconfig -o /boot/grub/grub.cfg'
-# 小黄鸭补帧 需要steam安装正版小黄鸭
-abbr lsfg 'LSFG_PROCESS="miyu"'
 # fa运行fastfetch
 abbr fa fastfetch
 abbr reboot 'systemctl reboot'
 function sl 
 	command sl | lolcat	
-end
-function 滚
-	sysup 
-end
-function raw
-	command ~/.config/scripts/random-anime-wallpaper.sh $argv
 end
 
 function 安装
@@ -187,10 +179,5 @@ function proxy_status
 end
 
 # Added by LM Studio CLI (lms)
-set -gx PATH $PATH /home/tingfeng/.lmstudio/bin
+set -gx PATH $PATH $HOME/.lmstudio/bin
 # End of LM Studio CLI section
-
-# Added by jcode installer
-if not contains "/home/tingfeng/.local/bin" $PATH
-    set -gx PATH "/home/tingfeng/.local/bin" $PATH
-end

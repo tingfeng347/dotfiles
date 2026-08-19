@@ -11,6 +11,11 @@
 ./install.sh fish zsh tmux yazi fzf lazyvim   # 只装指定模块
 ./install.sh --dry-run                     # 预览，不做任何修改
 
+# 覆盖/同步本机配置为仓库内容（清理仓库里已删除的旧文件）
+./update.sh -y        # 更新全部模块
+./update.sh fish zsh  # 只更新指定模块
+./update.sh --dry-run
+
 # 本机配置有更新时，反向采集进仓库
 ./capture.sh -y       # 采集全部
 ./capture.sh fish     # 只采集指定模块
@@ -24,6 +29,7 @@
 ```
 dotfiles/
 ├── install.sh          一键安装入口
+├── update.sh           覆盖/同步本机配置为仓库内容（清理已删除文件）
 ├── capture.sh          反向采集本机配置进仓库
 ├── lib/                引擎（扩充模块时无需改动）
 │   ├── common.sh       日志/工具函数

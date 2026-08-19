@@ -55,6 +55,62 @@ deploy_module() { # deploy_module <模块名>
     ok "模块 $module: 复制 $copied, 内容一致跳过 $skipped"
 }
 
+# 同步模块配置到本机 (rsync --delete: 覆盖 + 清理仓库里已删除的文件)
+# 相比 deploy_module, 会删除本机存在但仓库已删除的文件 (如旧 miyu.fish);
+# 被覆盖/删除的文件仍按相对路径备份到 ~/.dotfiles-backup/<时间戳>/
+# 按 module.conf 的 CAPTURE_PATHS 逐项同步, 使 CAPTURE_EXCLUDES (相对各源根) 正确生效
+sync_module() { # sync_module <模块名>
+    local module="$1"
+    local home_root="$MODULES_DIR/$module/home"
+    [ -d "$home_root" ] || { warn "模块 $module 无 home/ 目录，跳过"; return 0; }
+    # shellcheck disable=SC1090
+    [ -f "$MODULES_DIR/$module/module.conf" ] && . "$MODULES_DIR/$module/module.conf"
+
+    # 通用排除 + 模块声明的排除 (运行时状态/fisher/yazi 插件等, 不覆盖也不删除)
+    local excludes=(--exclude='.git/' --exclude='*.bak')
+    local e
+    for e in "${CAPTURE_EXCLUDES[@]:-}"; do
+        [ -n "$e" ] && excludes+=(--exclude="$e")
+    done
+
+    # 无 CAPTURE_PATHS 时回退为整棵 home/ 树
+    local entries
+    if [ "${#CAPTURE_PATHS[@]:-0}" -gt 0 ]; then
+        entries=("${CAPTURE_PATHS[@]}")
+    else
+        entries=("$HOME|")
+    fi
+
+    local stamp="" backup_dir=""
+    if [ -z "$DRY_RUN" ]; then
+        stamp="$(date +%Y%m%d-%H%M%S)"
+        backup_dir="$BACKUP_ROOT/$stamp"
+        mkdir -p "$backup_dir"
+    fi
+
+    local entry src rel dest repo
+    for entry in "${entries[@]}"; do
+        [ -z "$entry" ] && continue
+        src="${entry%%|*}"     # 本机目标 (含 $HOME)
+        rel="${entry#*|}"      # 相对 home/ 的仓库内路径
+        dest="$src"
+        repo="$home_root/${rel#/}"
+        repo="${repo%/}"
+        [ -e "$repo" ] || { warn "仓库内不存在，跳过: $repo"; continue; }
+
+        if [ -n "$DRY_RUN" ]; then
+            log "(dry-run) 模块 $module 同步变更 (${rel:-home/}):"
+            rsync -ani --delete "${excludes[@]}" "$repo"/ "$dest"/ || true
+            continue
+        fi
+
+        mkdir -p "$dest"
+        rsync -a --delete --backup --backup-dir="$backup_dir" "${excludes[@]}" "$repo"/ "$dest"/
+        ok "模块 $module: 已同步 ${rel:-home/}"
+    done
+    [ -z "$DRY_RUN" ] && rmdir "$backup_dir" 2>/dev/null || true
+}
+
 # 运行模块安装钩子 (钩子失败不中断整体安装, 仅警告)
 run_post_install() { # run_post_install <模块名>
     local module="$1"

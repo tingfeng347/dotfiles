@@ -128,12 +128,10 @@ proxy_status() {
 
 # 中文快捷
 安装() { command yay -S "$@"; }
-滚()   { sysup; }
 卸载() { command yay -Rns "$@"; }
 
 # 缩写 → zsh alias
 alias grub='LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 sudo grub-mkconfig -o /boot/grub/grub.cfg'
-alias lsfg='export LSFG_PROCESS=miyu'
 alias fa='fastfetch'
 alias reboot='systemctl reboot'
 
@@ -183,6 +181,5 @@ ___x_cmd zshplugin load zsh-autosuggestions zsh-config
 
 alias lazyvim="NVIM_APPNAME=lazyvim nvim"
 
-# Added by jcode installer
-export PATH="/home/tingfeng/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:./node_modules/.bin"
