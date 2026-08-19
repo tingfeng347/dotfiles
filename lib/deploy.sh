@@ -97,15 +97,27 @@ sync_module() { # sync_module <模块名>
         repo="${repo%/}"
         [ -e "$repo" ] || { warn "仓库内不存在，跳过: $repo"; continue; }
 
-        if [ -n "$DRY_RUN" ]; then
-            log "(dry-run) 模块 $module 同步变更 (${rel:-home/}):"
-            rsync -ani --delete "${excludes[@]}" "$repo"/ "$dest"/ || true
-            continue
+        if [ -d "$repo" ]; then
+            # 目录: 同步 + --delete 清理本机多余文件
+            if [ -n "$DRY_RUN" ]; then
+                log "(dry-run) 模块 $module 同步变更 (${rel:-home/}):"
+                rsync -ani --delete "${excludes[@]}" "$repo"/ "$dest"/ || true
+                continue
+            fi
+            mkdir -p "$dest"
+            rsync -a --delete --backup --backup-dir="$backup_dir" "${excludes[@]}" "$repo"/ "$dest"/
+            ok "模块 $module: 已同步 ${rel:-home/}"
+        else
+            # 单文件: 仅覆盖 (无 --delete, 不存在就新建)
+            if [ -n "$DRY_RUN" ]; then
+                log "(dry-run) 模块 $module 同步变更 (${rel:-home/}):"
+                rsync -ani "${excludes[@]}" "$repo" "$dest" || true
+                continue
+            fi
+            mkdir -p "$(dirname "$dest")"
+            rsync -a --backup --backup-dir="$backup_dir" "${excludes[@]}" "$repo" "$dest"
+            ok "模块 $module: 已同步 ${rel:-home/}"
         fi
-
-        mkdir -p "$dest"
-        rsync -a --delete --backup --backup-dir="$backup_dir" "${excludes[@]}" "$repo"/ "$dest"/
-        ok "模块 $module: 已同步 ${rel:-home/}"
     done
     [ -z "$DRY_RUN" ] && rmdir "$backup_dir" 2>/dev/null || true
 }
