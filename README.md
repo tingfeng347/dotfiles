@@ -63,7 +63,7 @@ dotfiles/
 | `home/`                               | 相对`$HOME` 的配置树，**复制部署**到 `$HOME` 对应路径                                                |
 | `packages.arch` / `packages.ubuntu` | 依赖包清单，每行一个；`aur:` 前缀 = AUR 包（仅 Arch）                                                        |
 | `post_install.sh`                     | 可选钩子（被 source 执行）：克隆第三方插件等                                                                   |
-| `module.conf`                         | `MODULE_DESC`（菜单描述）、`CAPTURE_PATHS`（采集来源 `源\|仓库内路径`）、`CAPTURE_EXCLUDES`（采集排除） |
+| `module.conf`                         | `MODULE_DESC`（菜单描述）、`CAPTURE_PATHS`（采集来源 `源\|仓库内路径`）、`CAPTURE_EXCLUDES`（采集排除）、`CAPTURE_STRIP`（行级隔离：sed 删除本机安装器写入的块） |
 | `plugins.txt`                         | 自定义清单（zsh 用：`仓库名\|pin 的 commit`）                                                                 |
 
 新增一个模块 = 复制目录并按需填写上述文件，**无需改引擎、无中央注册表**。

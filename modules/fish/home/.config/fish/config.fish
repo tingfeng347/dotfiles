@@ -9,8 +9,9 @@ set -gx STARSHIP_CONFIG ~/.config/starship.toml
 starship init fish | source
 zoxide init fish --cmd cd | source
 
-# fifc (fzf 补全) 用 nvim 打开文件
-set -gx fifc_editor nvim
+# fzf tab completion
+bind tab _fzf_tab_completion
+bind --mode insert tab _fzf_tab_completion
 
 # Alt+C: fzf 选择目录并 cd
 set -gx FZF_ALT_C_COMMAND 'fd --type d --hidden --exclude .git --exclude node_modules 2>/dev/null'
@@ -43,11 +44,19 @@ end
 
 # grub
 abbr grub 'LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 sudo grub-mkconfig -o /boot/grub/grub.cfg'
+# 小黄鸭补帧 需要steam安装正版小黄鸭
+abbr lsfg 'LSFG_PROCESS="miyu"'
 # fa运行fastfetch
 abbr fa fastfetch
 abbr reboot 'systemctl reboot'
 function sl 
 	command sl | lolcat	
+end
+function 滚
+	sysup 
+end
+function raw
+	command ~/.config/scripts/random-anime-wallpaper.sh $argv
 end
 
 function 安装
@@ -176,7 +185,3 @@ function proxy_status
     printf '\n--- IP 地理位置 (IP Location) ---\n'
     curl --proxy "$https_proxy" --connect-timeout 5 --max-time 10 -fsS https://ipinfo.io/json; or echo "查询失败"
 end
-
-# Added by LM Studio CLI (lms)
-set -gx PATH $PATH $HOME/.lmstudio/bin
-# End of LM Studio CLI section

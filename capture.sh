@@ -87,9 +87,10 @@ capture_module() {
     local conf="$MODULES_DIR/$module/module.conf"
     [ -f "$conf" ] || { warn "模块 $module 无 module.conf (无 CAPTURE_PATHS)，跳过"; return 0; }
     # 在子 shell 中 source 以读取数组
-    local entries excludes
+    local entries excludes strip_exprs
     entries="$(bash -c ". '$conf'; printf '%s\n' \"\${CAPTURE_PATHS[@]}\"")"
     excludes="$(bash -c ". '$conf'; printf '%s\n' \"\${CAPTURE_EXCLUDES[@]:-}\"")"
+    strip_exprs="$(bash -c ". '$conf'; printf '%s\n' \"\${CAPTURE_STRIP[@]:-}\"")"
     [ -z "$entries" ] && { warn "模块 $module 未声明 CAPTURE_PATHS，跳过"; return 0; }
 
     local extra_excludes=()
@@ -125,6 +126,44 @@ capture_module() {
         fi
         ok "已更新: $rel"
     done <<< "$entries"
+
+    # 行级隔离: 删除本机安装器写入的块/行 (LM Studio/jcode 等)
+    local -a strip_arr=()
+    if [ -n "$strip_exprs" ]; then
+        while IFS= read -r e; do
+            [ -n "$e" ] && strip_arr+=("$e")
+        done <<< "$strip_exprs"
+    fi
+    [ "${#strip_arr[@]}" -gt 0 ] && strip_module "$module" "${strip_arr[@]}"
+}
+
+# 行级隔离: 对已采集到仓库的文件删除本机安装器写入的行/块 (LM Studio/jcode 等)
+# CAPTURE_STRIP 是 sed -E 删除表达式数组, 逐文件应用 (幂等)
+strip_module() { # strip_module <模块名> <sed表达式...>
+    local module="$1"; shift
+    local home_root="$MODULES_DIR/$module/home"
+    [ -d "$home_root" ] || return 0
+    local f expr dirty
+    while IFS= read -r -d '' f; do
+        dirty=0
+        for expr in "$@"; do
+            if ! sed -E -e "$expr" "$f" | cmp -s - "$f"; then
+                dirty=1
+                break
+            fi
+        done
+        [ "$dirty" -eq 1 ] || continue
+        if [ -n "$DRY_RUN" ]; then
+            log "(dry-run) 将 strip: ${f#$MODULES_DIR/$module/home/}"
+            continue
+        fi
+        for expr in "$@"; do
+            sed -i -E -e "$expr" "$f"
+        done
+        # 清理删除块后残留的末尾空行 (保证 capture 幂等)
+        perl -0pi -e 's/\n+\z/\n/' "$f"
+        ok "已 strip: ${f#$MODULES_DIR/$module/home/}"
+    done < <(find "$home_root" -type f -print0)
 }
 
 echo ""
