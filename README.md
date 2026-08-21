@@ -80,7 +80,7 @@ dotfiles/
 
 ## 已知事项
 
-- Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`），包清单已区分处理；fish 模块的 post_install 会自动创建 `~/.local/bin/fd` 软链，yazi/lazyvim 等其它用到 `fd` 的模块若未装 fish，可手动 `ln -s $(which fdfind) ~/.local/bin/fd`。
+- Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`）、`bat` 的二进制名是 `batcat`（避免与 bacula 的 `bat` 冲突），包清单已区分处理；fish 模块的 post_install 会自动创建 `~/.local/bin/fd` 和 `~/.local/bin/bat` 软链，yazi/lazyvim 等其它用到 `fd` 的模块若未装 fish，可手动 `ln -s $(which fdfind) ~/.local/bin/fd`。
 - 旧版 Ubuntu（22.04 及更早）的 apt 仓库没有 `starship`/`eza`/`fastfetch`/`yazi`，清单里用 `ext:` 前缀标记，安装器会经官方脚本或 GitHub releases 预编译包装到 `~/.local/bin`（fastfetch 的 share 装到 `~/.local/share/fastfetch`；yazi 用 musl 静态构建以避免 glibc 版本不足），两个 shell 均已把 `~/.local/bin` 加入 PATH。`~/.local/bin` 不在 PATH 时需自行加入。
 - Ubuntu 仓库的 neovim 版本较旧，LazyVim 建议从 GitHub releases 或 ppa 安装新版本，再运行本安装器。
 - Ubuntu 22.04 的 apt 自带 fish 3.3.1，太旧（`fzf.fish`/`fifc` 需要 3.4+/3.6+，否则启动报 `set -f` 错误）。fish 模块的 post_install 会自动通过 `ppa:fish-shell/release-3` 升级到 3.7；`fish_plugins` 里把 `fzf.fish` 钉在 `@v9.1`（兼容 fish 3.2+），避免 `fisher update` 拉到要求 fish 4.0 的最新版。

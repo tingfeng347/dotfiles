@@ -55,3 +55,10 @@ if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
     ok "已创建 fd 软链: $HOME/.local/bin/fd -> $(command -v fdfind)"
 fi
+
+# Ubuntu 的 bat 包二进制名是 batcat (避免与 bacula 的 bat 冲突); 补一个 bat 软链
+if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
+    ok "已创建 bat 软链: $HOME/.local/bin/bat -> $(command -v batcat)"
+fi
