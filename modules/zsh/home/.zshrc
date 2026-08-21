@@ -1,8 +1,6 @@
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-ZSH_THEME="agnoster"
-
 plugins=(git z fzf fzf-tab history zsh-syntax-highlighting)
 
 export FZF_DEFAULT_OPTS="--cycle --layout=reverse --border --height=90% --marker=*"
@@ -146,9 +144,9 @@ bindkey '^[OB' history-beginning-search-forward
 # 禁用 zsh 的 %（不完整行标记），tmux 恢复时不再显示
 unsetopt PROMPT_SP
 
-# 关掉 starship，用 oh-my-zsh 的 agnoster 主题
-# export STARSHIP_CONFIG=~/.config/starship-zsh.toml
-# eval "$(starship init zsh)"
+# 用 starship 作为 zsh 提示符 (与 fish 同款样式, Catppuccin 配色)
+export STARSHIP_CONFIG=~/.config/starship-zsh.toml
+eval "$(starship init zsh)"
 
 # dk = 在当前目录打开 Thunar
 alias dk='thunar -q; thunar . &>/dev/null &!'
