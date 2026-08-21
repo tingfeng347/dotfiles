@@ -108,9 +108,15 @@ pkg_install_aur() { # pkg_install_aur <包名...>
 # GitHub releases 预编译包安装, 无需 sudo、不污染系统目录。
 install_external() { # install_external <工具名>
     local tool="$1"
-    # 直接探测二进制, 避免 ~/.local/bin 未在 PATH 时误判为未安装
-    if command -v "$tool" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$tool" ]; then
+    # 优先探测 ~/.local/bin 里已装的二进制; 再探测 PATH 中能真正运行(--version)的。
+    # 用 --version 实测, 避免 x-cmd 等在 Windows 侧生成的 shim 造成误判
+    # (那些 shim 指向 Windows 二进制, 在 WSL 里跑不起来)。
+    if [ -x "$HOME/.local/bin/$tool" ]; then
         log "已安装，跳过: $tool"
+        return 0
+    fi
+    if command -v "$tool" >/dev/null 2>&1 && "$tool" --version >/dev/null 2>&1; then
+        log "已安装，跳过: $tool ($(command -v "$tool"))"
         return 0
     fi
     log "安装外部工具: $tool (官方仓库缺失, 安装到 ~/.local)"
@@ -154,6 +160,23 @@ install_external() { # install_external <工具名>
             install -m 0755 "$root/bin/flashfetch" "$bindir/flashfetch" 2>/dev/null || true
             mkdir -p "$HOME/.local/share/fastfetch"
             cp -a "$root/share/fastfetch/." "$HOME/.local/share/fastfetch/" 2>/dev/null || true
+            rm -rf "$tmpdir"
+            ;;
+        yazi)
+            # Ubuntu 22.04 的 glibc 过旧, gnu 构建会报 GLIBC_2.39 not found, 故用 musl 静态构建
+            arch="$(uname -m)"
+            case "$arch" in
+                x86_64) arch="x86_64-unknown-linux-musl" ;;
+                aarch64|arm64) arch="aarch64-unknown-linux-musl" ;;
+                *) die "yazi 不支持的架构: $arch" ;;
+            esac
+            command -v unzip >/dev/null 2>&1 || die "安装 yazi 需要 unzip"
+            tmpdir="$(mktemp -d)"
+            log "下载 yazi ($arch)..."
+            curl -fsSL "https://github.com/sxyazi/yazi/releases/latest/download/yazi-${arch}.zip" -o "$tmpdir/yazi.zip" || die "yazi 下载失败"
+            unzip -q "$tmpdir/yazi.zip" -d "$tmpdir" || die "yazi 解压失败"
+            install -m 0755 "$tmpdir/yazi-$arch/yazi" "$bindir/yazi" || die "yazi 安装失败"
+            install -m 0755 "$tmpdir/yazi-$arch/ya" "$bindir/ya" || die "ya 安装失败"
             rm -rf "$tmpdir"
             ;;
         *)
@@ -221,10 +244,13 @@ remove_external() { # remove_external <工具名>
     log "卸载外部工具: $tool"
     [ -n "$DRY_RUN" ] && return 0
     rm -f "$target" && ok "已删除: $target" || warn "删除失败: $target"
-    if [ "$tool" = "fastfetch" ]; then
-        rm -f "$HOME/.local/bin/flashfetch"
-        rm -rf "$HOME/.local/share/fastfetch"
-    fi
+    case "$tool" in
+        yazi) rm -f "$HOME/.local/bin/ya" ;;
+        fastfetch)
+            rm -f "$HOME/.local/bin/flashfetch"
+            rm -rf "$HOME/.local/share/fastfetch"
+            ;;
+    esac
 }
 
 # 解析包清单文件并卸载 (与 install_package_list 对称)
