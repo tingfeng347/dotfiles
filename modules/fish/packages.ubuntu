@@ -1,10 +1,10 @@
 fish
 curl
-starship
+ext:starship
 zoxide
-eza
+ext:eza
 bat
-fastfetch
+ext:fastfetch
 fzf
 fd-find
 sl

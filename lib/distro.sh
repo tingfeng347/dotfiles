@@ -103,22 +103,91 @@ pkg_install_aur() { # pkg_install_aur <包名...>
     done
 }
 
-# 解析包清单文件: 普通行 -> 官方仓库, "aur:" 前缀 -> AUR
+# 安装官方仓库缺失的工具到用户目录 ~/.local (starship/eza/fastfetch 等)。
+# 这类工具在旧版 Ubuntu (如 22.04) 的 apt 仓库中不存在, 通过官方脚本或
+# GitHub releases 预编译包安装, 无需 sudo、不污染系统目录。
+install_external() { # install_external <工具名>
+    local tool="$1"
+    # 直接探测二进制, 避免 ~/.local/bin 未在 PATH 时误判为未安装
+    if command -v "$tool" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$tool" ]; then
+        log "已安装，跳过: $tool"
+        return 0
+    fi
+    log "安装外部工具: $tool (官方仓库缺失, 安装到 ~/.local)"
+    [ -n "$DRY_RUN" ] && return 0
+    command -v curl >/dev/null 2>&1 || die "安装 $tool 需要 curl"
+    command -v tar >/dev/null 2>&1 || die "安装 $tool 需要 tar"
+    local bindir="$HOME/.local/bin" tmpdir arch
+    mkdir -p "$bindir"
+    case "$tool" in
+        starship)
+            log "通过官方脚本安装 starship..."
+            curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$bindir" || die "starship 安装失败"
+            ;;
+        eza)
+            arch="$(uname -m)"
+            case "$arch" in
+                x86_64) arch="x86_64-unknown-linux-gnu" ;;
+                aarch64|arm64) arch="aarch64-unknown-linux-gnu" ;;
+                *) die "eza 不支持的架构: $arch" ;;
+            esac
+            tmpdir="$(mktemp -d)"
+            log "下载 eza ($arch)..."
+            curl -fsSL "https://github.com/eza-community/eza/releases/latest/download/eza_${arch}.tar.gz" -o "$tmpdir/eza.tar.gz" || die "eza 下载失败"
+            tar -xzf "$tmpdir/eza.tar.gz" -C "$tmpdir" || die "eza 解压失败"
+            install -m 0755 "$tmpdir/eza" "$bindir/eza" || die "eza 安装失败"
+            rm -rf "$tmpdir"
+            ;;
+        fastfetch)
+            arch="$(uname -m)"
+            case "$arch" in
+                x86_64) arch="amd64" ;;
+                aarch64|arm64) arch="aarch64" ;;
+                *) die "fastfetch 不支持的架构: $arch" ;;
+            esac
+            tmpdir="$(mktemp -d)"
+            log "下载 fastfetch ($arch)..."
+            curl -fsSL "https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-${arch}.tar.gz" -o "$tmpdir/fastfetch.tar.gz" || die "fastfetch 下载失败"
+            tar -xzf "$tmpdir/fastfetch.tar.gz" -C "$tmpdir" || die "fastfetch 解压失败"
+            local root="$tmpdir/fastfetch-linux-$arch/usr"
+            install -m 0755 "$root/bin/fastfetch" "$bindir/fastfetch" || die "fastfetch 安装失败"
+            install -m 0755 "$root/bin/flashfetch" "$bindir/flashfetch" 2>/dev/null || true
+            mkdir -p "$HOME/.local/share/fastfetch"
+            cp -a "$root/share/fastfetch/." "$HOME/.local/share/fastfetch/" 2>/dev/null || true
+            rm -rf "$tmpdir"
+            ;;
+        *)
+            warn "未知外部工具，跳过: $tool"
+            return 0
+            ;;
+    esac
+    if [ -x "$bindir/$tool" ]; then
+        ok "$tool 安装完成: $bindir/$tool"
+    else
+        warn "$tool 安装结果未确认, 请检查 $bindir/$tool"
+    fi
+}
+
+# 解析包清单文件: 普通行 -> 官方仓库, "aur:" 前缀 -> AUR, "ext:" 前缀 -> 外部工具
 install_package_list() { # install_package_list <文件路径>
     local list_file="$1" line
     [ -f "$list_file" ] || return 0
-    local official=() aur=()
+    local official=() aur=() ext=()
     while IFS= read -r line; do
         [[ "$line" =~ ^#.*$ ]] && continue
         [ -z "$line" ] && continue
-        if [[ "$line" == aur:* ]]; then
-            aur+=("${line#aur:}")
-        else
-            official+=("$line")
-        fi
+        case "$line" in
+            aur:*) aur+=("${line#aur:}") ;;
+            ext:*) ext+=("${line#ext:}") ;;
+            *) official+=("$line") ;;
+        esac
     done < "$list_file"
     [ "${#official[@]}" -gt 0 ] && pkg_install "${official[@]}"
     [ "${#aur[@]}" -gt 0 ] && pkg_install_aur "${aur[@]}"
+    local t
+    for t in "${ext[@]}"; do
+        install_external "$t"
+    done
     return 0
 }
 
@@ -141,19 +210,36 @@ pkg_remove() { # pkg_remove <包名...>
     esac
 }
 
+# 卸载 install_external 安装到 ~/.local 的工具
+remove_external() { # remove_external <工具名>
+    local tool="$1" target
+    target="$HOME/.local/bin/$tool"
+    if [ ! -e "$target" ] && ! command -v "$tool" >/dev/null 2>&1; then
+        log "未安装，跳过: $tool"
+        return 0
+    fi
+    log "卸载外部工具: $tool"
+    [ -n "$DRY_RUN" ] && return 0
+    rm -f "$target" && ok "已删除: $target" || warn "删除失败: $target"
+    if [ "$tool" = "fastfetch" ]; then
+        rm -f "$HOME/.local/bin/flashfetch"
+        rm -rf "$HOME/.local/share/fastfetch"
+    fi
+}
+
 # 解析包清单文件并卸载 (与 install_package_list 对称)
 remove_package_list() { # remove_package_list <文件路径>
     local list_file="$1" line
     [ -f "$list_file" ] || return 0
-    local official=() aur=()
+    local official=() aur=() ext=()
     while IFS= read -r line; do
         [[ "$line" =~ ^#.*$ ]] && continue
         [ -z "$line" ] && continue
-        if [[ "$line" == aur:* ]]; then
-            aur+=("${line#aur:}")
-        else
-            official+=("$line")
-        fi
+        case "$line" in
+            aur:*) aur+=("${line#aur:}") ;;
+            ext:*) ext+=("${line#ext:}") ;;
+            *) official+=("$line") ;;
+        esac
     done < "$list_file"
     # Arch 下 AUR 包与官方包都走 pacman 卸载; 其余发行版 AUR 本就不安装
     if [ "$DISTRO_ID" = "arch" ]; then
@@ -162,6 +248,10 @@ remove_package_list() { # remove_package_list <文件路径>
     fi
     [ "${#official[@]}" -gt 0 ] && pkg_remove "${official[@]}"
     [ "${#aur[@]}" -gt 0 ] && warn "跳过 AUR 包卸载: ${aur[*]}"
+    local t
+    for t in "${ext[@]}"; do
+        remove_external "$t"
+    done
     return 0
 }
 

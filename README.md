@@ -61,7 +61,7 @@ dotfiles/
 | 文件                                    | 作用                                                                                                           |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `home/`                               | 相对`$HOME` 的配置树，**复制部署**到 `$HOME` 对应路径                                                |
-| `packages.arch` / `packages.ubuntu` | 依赖包清单，每行一个；`aur:` 前缀 = AUR 包（仅 Arch）                                                        |
+| `packages.arch` / `packages.ubuntu` | 依赖包清单，每行一个；`aur:` 前缀 = AUR 包（仅 Arch）；`ext:` 前缀 = 仓库缺失的工具（starship/eza/fastfetch），经官方脚本/GitHub releases 装到 `~/.local` |
 | `post_install.sh`                     | 可选钩子（被 source 执行）：克隆第三方插件等                                                                   |
 | `module.conf`                         | `MODULE_DESC`（菜单描述）、`CAPTURE_PATHS`（采集来源 `源\|仓库内路径`）、`CAPTURE_EXCLUDES`（采集排除）、`CAPTURE_STRIP`（行级隔离：sed 删除本机安装器写入的块） |
 | `plugins.txt`                         | 自定义清单（zsh 用：`仓库名\|pin 的 commit`）                                                                 |
@@ -81,6 +81,7 @@ dotfiles/
 ## 已知事项
 
 - Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`），包清单已区分处理；fish 模块的 post_install 会自动创建 `~/.local/bin/fd` 软链，yazi/lazyvim 等其它用到 `fd` 的模块若未装 fish，可手动 `ln -s $(which fdfind) ~/.local/bin/fd`。
+- 旧版 Ubuntu（22.04 及更早）的 apt 仓库没有 `starship`/`eza`/`fastfetch`，清单里用 `ext:` 前缀标记，安装器会经官方脚本或 GitHub releases 预编译包装到 `~/.local/bin`（fastfetch 的 share 装到 `~/.local/share/fastfetch`），两个 shell 均已把 `~/.local/bin` 加入 PATH。`~/.local/bin` 不在 PATH 时需自行加入。
 - Ubuntu 仓库的 neovim 版本较旧，LazyVim 建议从 GitHub releases 或 ppa 安装新版本，再运行本安装器。
 - `./install.sh` 需要 sudo（装包）；以普通用户运行，不要用 root。
 - install.sh 会确保 `en_US.UTF-8` locale 已生成（需 sudo 执行 `locale-gen`）；否则 oh-my-zsh 的 agnoster 主题用 `$'\ue0b0'` 时会报 "character not in range"。

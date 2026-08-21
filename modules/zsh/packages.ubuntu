@@ -1,11 +1,11 @@
 zsh
 git
 curl
-starship
+ext:starship
 fzf
-eza
+ext:eza
 bat
 zoxide
-fastfetch
+ext:fastfetch
 man-db
 manpages
