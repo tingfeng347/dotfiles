@@ -54,6 +54,8 @@ echo ""
 detect_distro
 log "检测到发行版: $DISTRO_ID"
 
+ensure_utf8_locale
+
 install_x_cmd
 
 SELECTED=()

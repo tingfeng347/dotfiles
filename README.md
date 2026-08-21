@@ -83,6 +83,7 @@ dotfiles/
 - Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`），包清单已区分处理；fish 模块的 post_install 会自动创建 `~/.local/bin/fd` 软链，yazi/lazyvim 等其它用到 `fd` 的模块若未装 fish，可手动 `ln -s $(which fdfind) ~/.local/bin/fd`。
 - Ubuntu 仓库的 neovim 版本较旧，LazyVim 建议从 GitHub releases 或 ppa 安装新版本，再运行本安装器。
 - `./install.sh` 需要 sudo（装包）；以普通用户运行，不要用 root。
+- install.sh 会确保 `en_US.UTF-8` locale 已生成（需 sudo 执行 `locale-gen`）；否则 oh-my-zsh 的 agnoster 主题用 `$'\ue0b0'` 时会报 "character not in range"。
 - fzf 的 shell 集成（keybind 等）在 fish/zsh 模块内；`modules/fzf` 只负责二进制与配套工具。
 
 ## 更新流程

@@ -33,6 +33,30 @@ detect_distro() {
     esac
 }
 
+# 确保 en_US.UTF-8 locale 已生成。
+# oh-my-zsh 的 agnoster 等主题用 $'\ue0b0' 之类 powerline 分隔符, 依赖 UTF-8 locale;
+# 若环境变量声明了 en_US.UTF-8 但 locale 未生成, zsh 启动会报 "character not in range"。
+ensure_utf8_locale() {
+    command -v locale >/dev/null 2>&1 || return 0
+    if locale -a 2>/dev/null | grep -qiE '^en_US\.utf-?8$'; then
+        log "UTF-8 locale (en_US.UTF-8) 已就绪"
+        return 0
+    fi
+    log "生成 en_US.UTF-8 locale..."
+    [ -n "$DRY_RUN" ] && return 0
+    case "$DISTRO_ID" in
+        arch)
+            # Arch 需先在 /etc/locale.gen 取消注释 en_US.UTF-8 再 locale-gen
+            sudo sed -i -E 's/^#[[:space:]]*(en_US\.UTF-8[[:space:]]+UTF-8)[[:space:]]*$/\1/' /etc/locale.gen
+            sudo locale-gen en_US.UTF-8
+            ;;
+        *)
+            sudo sed -i -E 's/^#[[:space:]]*(en_US\.UTF-8[[:space:]]+UTF-8)[[:space:]]*$/\1/' /etc/locale.gen 2>/dev/null || true
+            sudo locale-gen en_US.UTF-8
+            ;;
+    esac
+}
+
 pkg_install() { # pkg_install <包名...>
     local pkgs=("$@") missing=()
     for p in "${pkgs[@]}"; do
