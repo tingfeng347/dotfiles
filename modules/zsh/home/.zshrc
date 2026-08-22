@@ -34,6 +34,16 @@ export PATH="$PATH:./node_modules/.bin"
 # zoxide 智能跳转（替代 cd）
 eval "$(zoxide init zsh --cmd cd)"
 
+# 修复 Ubuntu 22.04 apt 自带的 zoxide 0.4.3: 其 init 生成的 _z_cd 内部用 cd
+# 而非 builtin cd, 与 --cmd cd 覆盖的 cd 函数互相递归 (cd -> _z_cd -> cd -> ...)。
+# 重写 _z_cd 改用 builtin cd 打断递归; 新版本 zoxide 该函数已用 builtin cd, 无副作用。
+_z_cd() {
+    builtin cd "$@" || return "$?"
+    if [ "$_ZO_ECHO" = "1" ]; then
+        echo "$PWD"
+    fi
+}
+
 # 命令替换（先清除 oh-my-zsh 预设的别名，否则函数定义报错）
 unalias ls 2>/dev/null
 cat()  { command bat "$@"; }
