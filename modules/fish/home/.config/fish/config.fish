@@ -9,6 +9,18 @@ set -gx STARSHIP_CONFIG ~/.config/starship.toml
 starship init fish | source
 zoxide init fish --cmd cd | source
 
+# 修复 Ubuntu 22.04 apt 自带的 zoxide 0.4.3: 其 init 生成的 _z_cd 内部用 cd
+# 而非 builtin cd, 与 --cmd cd 覆盖的 cd 函数互相递归 (cd -> _z_cd -> cd -> ...)。
+# 重写 _z_cd 改用 builtin cd 打断递归; 新版本 zoxide 该函数已用 builtin cd, 无副作用。
+function _z_cd
+    builtin cd $argv
+    or return $status
+
+    if test "$_ZO_ECHO" = "1"
+        echo $PWD
+    end
+end
+
 # fifc (fzf 补全) 用 nvim 打开文件
 set -gx fifc_editor nvim
 
