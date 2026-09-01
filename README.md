@@ -28,6 +28,9 @@
 ./uninstall.sh --purge                  # 同时删除第三方数据（oh-my-zsh/fisher/tpm 等）
 ./uninstall.sh fish zsh                 # 只卸载指定模块
 ./uninstall.sh --dry-run
+
+# LazyVim 插件单独安装（install.sh 不自动装, 插件下载耗时）
+./install-lazyvim.sh   # 无头同步插件 (带超时与重试, 等价于启动后 :Lazy sync)
 ```
 
 安装器自动检测发行版（`/etc/os-release`）：Arch 走 pacman（`aur:` 前缀走 paru/yay），Ubuntu/Debian 走 apt。冲突文件先备份到 `~/.dotfiles-backup/<时间戳>/` 再覆盖。若本次安装了 fish，会自动执行 `chsh -s` 将其设为默认登录 shell（失败仅警告）。
@@ -37,6 +40,7 @@
 ```
 dotfiles/
 ├── install.sh          一键安装入口
+├── install-lazyvim.sh  单独安装/同步 LazyVim 插件（无头模式, 带重试）
 ├── uninstall.sh        卸载入口（默认保留已装的包）
 ├── update.sh           覆盖/同步本机配置为仓库内容（清理已删除文件）
 ├── capture.sh          反向采集本机配置进仓库
@@ -76,7 +80,7 @@ dotfiles/
    - zsh：`plugins.txt`（`仓库\|commit`）+ oh-my-zsh pinned commit
    - tmux：`.tmux.conf` 内 `@plugin` + tpm
    - yazi：`package.toml` 的 rev+hash，post_install 钩子执行 `ya pkg install` 拉取
-   - LazyVim：`lazy-lock.json` 锁版本，首次启动自动安装（本机用 `NVIM_APPNAME=lazyvim nvim` 启动）
+   - LazyVim：`lazy-lock.json` 锁版本，首次启动自动安装（本机用 `NVIM_APPNAME=lazyvim nvim` 启动）；也可用 `./install-lazyvim.sh` 无头同步（带超时与重试），不随 `install.sh` 自动安装
 
 ## 已知事项
 
