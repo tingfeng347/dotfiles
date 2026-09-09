@@ -158,7 +158,10 @@ strip_module() { # strip_module <模块名> <sed表达式...>
             continue
         fi
         for expr in "$@"; do
-            sed -i -E -e "$expr" "$f"
+            # GNU sed 与 macOS BSD sed 的 -i 参数不同，使用临时文件替换保持兼容。
+            local tmp
+            tmp="$(mktemp "${f}.XXXXXX")"
+            sed -E -e "$expr" "$f" > "$tmp" && mv -f "$tmp" "$f"
         done
         # 清理删除块后残留的末尾空行 (保证 capture 幂等)
         perl -0pi -e 's/\n+\z/\n/' "$f"

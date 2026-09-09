@@ -48,12 +48,13 @@ fi
 
 echo ""
 echo "  ╔══════════════════════════════════════╗"
-echo "  ║   dotfiles 一键安装 (Ubuntu/Arch)    ║"
+echo "  ║   dotfiles 一键安装 (Ubuntu/Arch/macOS) ║"
 echo "  ╚══════════════════════════════════════╝"
 echo ""
 detect_distro
 log "检测到发行版: $DISTRO_ID"
 
+ensure_homebrew
 ensure_utf8_locale
 
 install_x_cmd
@@ -121,7 +122,9 @@ done
 # ----------------------------------------------------------
 if in_array "fish" "${SELECTED[@]}" && command -v fish >/dev/null 2>&1; then
     FISH_BIN="$(command -v fish)"
-    if ! grep -qxF "$FISH_BIN" /etc/shells 2>/dev/null; then
+    SHELLS_FILE="/etc/shells"
+    [ "$DISTRO_ID" = "darwin" ] && SHELLS_FILE="/etc/shells"
+    if ! grep -qxF "$FISH_BIN" "$SHELLS_FILE" 2>/dev/null; then
         warn "$FISH_BIN 不在 /etc/shells, 跳过 chsh (需先手动添加)"
     elif [ "$SHELL" = "$FISH_BIN" ]; then
         log "默认 shell 已是 fish, 跳过"

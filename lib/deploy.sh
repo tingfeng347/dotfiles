@@ -32,6 +32,7 @@ deploy_module() { # deploy_module <模块名>
 
     local copied=0 skipped=0
     while IFS= read -r -d '' rel; do
+        rel="${rel#./}"
         local dest="$HOME/$rel"
         local s="$src/$rel"
         mkdir -p "$(dirname "$dest")"
@@ -50,7 +51,7 @@ deploy_module() { # deploy_module <模块名>
             log "已复制: $dest"
         fi
         copied=$((copied+1))
-    done < <(cd "$src" && find . -type f -print0 | sed -z 's|^\./||')
+    done < <(cd "$src" && find . -type f -print0)
 
     ok "模块 $module: 复制 $copied, 内容一致跳过 $skipped"
 }
@@ -146,6 +147,7 @@ install_module() { # install_module <模块名>
     local pkg_file=""
     case "$DISTRO_ID" in
         arch)    pkg_file="$MODULES_DIR/$module/packages.arch" ;;
+        darwin)  pkg_file="$MODULES_DIR/$module/packages.darwin" ;;
         *)       pkg_file="$MODULES_DIR/$module/packages.ubuntu" ;;
     esac
     install_package_list "$pkg_file"
@@ -163,6 +165,7 @@ remove_module() { # remove_module <模块名>
 
     local removed=0 skipped=0
     while IFS= read -r -d '' rel; do
+        rel="${rel#./}"
         local dest="$HOME/$rel"
         local s="$src/$rel"
         if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
@@ -180,7 +183,7 @@ remove_module() { # remove_module <模块名>
             log "已删除: $dest"
         fi
         removed=$((removed+1))
-    done < <(cd "$src" && find . -type f -print0 | sed -z 's|^\./||')
+    done < <(cd "$src" && find . -type f -print0)
 
     ok "模块 $module: 删除 $removed, 不存在跳过 $skipped"
 }
@@ -224,7 +227,8 @@ uninstall_module() { # uninstall_module <模块名>
         local pkg_file=""
         case "$DISTRO_ID" in
             arch)    pkg_file="$MODULES_DIR/$module/packages.arch" ;;
-            *)       pkg_file="$MODULES_DIR/$module/packages.ubuntu" ;;
+        darwin)  pkg_file="$MODULES_DIR/$module/packages.darwin" ;;
+        *)       pkg_file="$MODULES_DIR/$module/packages.ubuntu" ;;
         esac
         remove_package_list "$pkg_file"
     fi

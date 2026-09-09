@@ -4,6 +4,7 @@ set -euo pipefail
 
 # ---- 升级 fish: Ubuntu 22.04 apt 自带 3.3.1, 而 fzf.fish/fifc 需要 3.4+/3.6+ ----
 upgrade_fish_if_old() {
+    [ "${DISTRO_ID:-}" = "darwin" ] && { log "macOS 通过 Homebrew 管理 fish，跳过 Linux PPA 升级"; return 0; }
     command -v fish >/dev/null 2>&1 || return 0
     local ver major minor
     ver="$(fish --version 2>/dev/null | awk '{print $3}' || true)"

@@ -1,17 +1,21 @@
 #!/bin/bash
 # ============================================================
-# distro.sh — 发行版检测与包管理抽象 (Ubuntu / Arch)
+# distro.sh — 发行版检测与包管理抽象 (Ubuntu / Arch / macOS)
 # ============================================================
 
 DISTRO_ID=""
 AUR_HELPER=""
 APT_UPDATED=0
+BREW_UPDATED=0
 
 # 单包是否已安装 (逐包查询, 避免管道 SIGPIPE + pipefail 误判)
 is_installed() { # is_installed <包名>
     case "$DISTRO_ID" in
         arch)
             pacman -Q "$1" >/dev/null 2>&1
+            ;;
+        darwin)
+            brew list --formula "$1" >/dev/null 2>&1
             ;;
         *)
             dpkg-query -s "$1" >/dev/null 2>&1
@@ -20,11 +24,15 @@ is_installed() { # is_installed <包名>
 }
 
 detect_distro() {
+    if [ "$(uname -s 2>/dev/null || true)" = "Darwin" ]; then
+        DISTRO_ID="darwin"
+        return 0
+    fi
     if [ -r /etc/os-release ]; then
         DISTRO_ID="$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')"
     fi
     case "$DISTRO_ID" in
-        arch) ;;
+        arch|darwin) ;;
         ubuntu|debian|linuxmint|pop|elementary) ;;
         *)
             warn "未识别的发行版: ${DISTRO_ID:-unknown}，将按 Ubuntu/Debian (apt) 处理"
@@ -37,6 +45,7 @@ detect_distro() {
 # oh-my-zsh 的 agnoster 等主题用 $'\ue0b0' 之类 powerline 分隔符, 依赖 UTF-8 locale;
 # 若环境变量声明了 en_US.UTF-8 但 locale 未生成, zsh 启动会报 "character not in range"。
 ensure_utf8_locale() {
+    [ "$DISTRO_ID" = "darwin" ] && { log "macOS 使用系统 UTF-8 locale"; return 0; }
     command -v locale >/dev/null 2>&1 || return 0
     if locale -a 2>/dev/null | grep -qiE '^en_US\.utf-?8$'; then
         log "UTF-8 locale (en_US.UTF-8) 已就绪"
@@ -57,6 +66,33 @@ ensure_utf8_locale() {
     esac
 }
 
+# 确保 macOS 有 Homebrew。官方脚本会在需要时请求管理员权限。
+ensure_homebrew() {
+    [ "$DISTRO_ID" = "darwin" ] || return 0
+    if command -v brew >/dev/null 2>&1; then
+        local brew_prefix
+        brew_prefix="$(brew --prefix 2>/dev/null || true)"
+        if [ -z "$DRY_RUN" ] && [ -n "$brew_prefix" ] && [ -d "$brew_prefix/Cellar" ] && [ ! -w "$brew_prefix/Cellar" ]; then
+            die "Homebrew 目录不可写: $brew_prefix/Cellar；请执行 sudo chown -R $(id -un) $brew_prefix"
+        fi
+        log "Homebrew 已安装，跳过"
+        return 0
+    fi
+    log "未检测到 Homebrew，准备安装..."
+    [ -n "$DRY_RUN" ] && { warn "(dry-run) 将安装 Homebrew: https://brew.sh"; return 0; }
+    command -v curl >/dev/null 2>&1 || die "安装 Homebrew 需要 curl"
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+        || die "Homebrew 安装失败，请访问 https://brew.sh 手动安装"
+    # 安装脚本不会总是更新当前进程 PATH；加载两种 macOS 默认前缀。
+    local brew_bin=""
+    [ -x /opt/homebrew/bin/brew ] && brew_bin=/opt/homebrew/bin/brew
+    [ -x /usr/local/bin/brew ] && brew_bin=/usr/local/bin/brew
+    if [ -n "$brew_bin" ]; then
+        eval "$("$brew_bin" shellenv)"
+    fi
+    command -v brew >/dev/null 2>&1 || warn "Homebrew 已安装但当前 PATH 尚未更新，请重新打开终端后重试"
+}
+
 pkg_install() { # pkg_install <包名...>
     local pkgs=("$@") missing=()
     for p in "${pkgs[@]}"; do
@@ -72,6 +108,14 @@ pkg_install() { # pkg_install <包名...>
     case "$DISTRO_ID" in
         arch)
             sudo pacman -S --noconfirm --needed "${missing[@]}"
+            ;;
+        darwin)
+            command -v brew >/dev/null 2>&1 || die "未找到 Homebrew，请先安装: https://brew.sh"
+            if [ "$BREW_UPDATED" -eq 0 ]; then
+                brew update
+                BREW_UPDATED=1
+            fi
+            brew install "${missing[@]}"
             ;;
         *)
             if [ "$APT_UPDATED" -eq 0 ]; then
@@ -208,7 +252,8 @@ install_package_list() { # install_package_list <文件路径>
     [ "${#official[@]}" -gt 0 ] && pkg_install "${official[@]}"
     [ "${#aur[@]}" -gt 0 ] && pkg_install_aur "${aur[@]}"
     local t
-    for t in "${ext[@]}"; do
+    for t in "${ext[@]:-}"; do
+        [ -n "$t" ] || continue
         install_external "$t"
     done
     return 0
@@ -229,6 +274,7 @@ pkg_remove() { # pkg_remove <包名...>
     [ -n "$DRY_RUN" ] && return 0
     case "$DISTRO_ID" in
         arch) sudo pacman -Rns --noconfirm "${installed[@]}" ;;
+        darwin) brew uninstall "${installed[@]}" ;;
         *) sudo apt-get remove -y "${installed[@]}" ;;
     esac
 }
@@ -275,7 +321,8 @@ remove_package_list() { # remove_package_list <文件路径>
     [ "${#official[@]}" -gt 0 ] && pkg_remove "${official[@]}"
     [ "${#aur[@]}" -gt 0 ] && warn "跳过 AUR 包卸载: ${aur[*]}"
     local t
-    for t in "${ext[@]}"; do
+    for t in "${ext[@]:-}"; do
+        [ -n "$t" ] || continue
         remove_external "$t"
     done
     return 0

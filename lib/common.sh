@@ -38,7 +38,12 @@ backup_target() {
     local dest="$1" src="$2" backup_root="$3"
     [ -e "$dest" ] || [ -L "$dest" ] || return 0
     # 已是指向 src 的符号链接则无需备份
-    [ -L "$dest" ] && [ "$(readlink -f "$dest")" = "$(readlink -f "$src")" ] && return 0
+    if [ -L "$dest" ]; then
+        local dest_real src_real
+        dest_real="$(cd -P "$(dirname "$dest")" 2>/dev/null && printf '%s/%s' "$PWD" "$(basename "$dest")")"
+        src_real="$(cd -P "$(dirname "$src")" 2>/dev/null && printf '%s/%s' "$PWD" "$(basename "$src")")"
+        [ "$dest_real" = "$src_real" ] && return 0
+    fi
     local rel="${dest#$HOME/}"
     local backup_path="$backup_root/$rel"
     if [ -n "$DRY_RUN" ]; then

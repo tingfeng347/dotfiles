@@ -54,7 +54,7 @@ fi
 
 echo ""
 echo "  ╔══════════════════════════════════════╗"
-echo "  ║   dotfiles 卸载 (Ubuntu/Arch)        ║"
+echo "  ║   dotfiles 卸载 (Ubuntu/Arch/macOS) ║"
 echo "  ╚══════════════════════════════════════╝"
 echo ""
 detect_distro
