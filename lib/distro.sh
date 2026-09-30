@@ -147,27 +147,51 @@ pkg_install_aur() { # pkg_install_aur <包名...>
     done
 }
 
+# 校验 nvim 是否满足 LazyVim 要求 (>= 0.10)。旧版 Ubuntu 22.04 自带 0.6.1, 不能用
+# "--version 能跑" 判定, 必须看主次版本号。
+nvim_version_ok() { # nvim_version_ok <nvim 路径>
+    local bin="$1" ver maj min
+    [ -x "$bin" ] || command -v "$bin" >/dev/null 2>&1 || return 1
+    ver="$("$bin" --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+' | head -n1)" || return 1
+    [ -n "$ver" ] || return 1
+    maj="${ver%%.*}"
+    min="${ver##*.}"
+    [ "$maj" -gt 0 ] || [ "$min" -ge 10 ]
+}
+
 # 安装官方仓库缺失的工具到用户目录 ~/.local (starship/eza/fastfetch 等)。
 # 这类工具在旧版 Ubuntu (如 22.04) 的 apt 仓库中不存在, 通过官方脚本或
 # GitHub releases 预编译包安装, 无需 sudo、不污染系统目录。
+# neovim 特殊: 旧版 Ubuntu 仓库版本过旧 (LazyVim 需 >= 0.10), 也走此路径装到 ~/.local。
 install_external() { # install_external <工具名>
     local tool="$1"
     # 优先探测 ~/.local/bin 里已装的二进制; 再探测 PATH 中能真正运行(--version)的。
     # 用 --version 实测, 避免 x-cmd 等在 Windows 侧生成的 shim 造成误判
     # (那些 shim 指向 Windows 二进制, 在 WSL 里跑不起来)。
-    if [ -x "$HOME/.local/bin/$tool" ]; then
-        log "已安装，跳过: $tool"
-        return 0
-    fi
-    if command -v "$tool" >/dev/null 2>&1 && "$tool" --version >/dev/null 2>&1; then
-        log "已安装，跳过: $tool ($(command -v "$tool"))"
-        return 0
+    if [ "$tool" = "neovim" ]; then
+        if [ -x "$HOME/.local/opt/nvim/bin/nvim" ] && nvim_version_ok "$HOME/.local/opt/nvim/bin/nvim"; then
+            log "已安装，跳过: neovim ($HOME/.local/opt/nvim/bin/nvim)"
+            return 0
+        fi
+        if command -v nvim >/dev/null 2>&1 && nvim_version_ok "$(command -v nvim)"; then
+            log "已安装，跳过: neovim ($(command -v nvim), $(nvim --version | head -n1))"
+            return 0
+        fi
+    else
+        if [ -x "$HOME/.local/bin/$tool" ]; then
+            log "已安装，跳过: $tool"
+            return 0
+        fi
+        if command -v "$tool" >/dev/null 2>&1 && "$tool" --version >/dev/null 2>&1; then
+            log "已安装，跳过: $tool ($(command -v "$tool"))"
+            return 0
+        fi
     fi
     log "安装外部工具: $tool (官方仓库缺失, 安装到 ~/.local)"
     [ -n "$DRY_RUN" ] && return 0
     command -v curl >/dev/null 2>&1 || die "安装 $tool 需要 curl"
     command -v tar >/dev/null 2>&1 || die "安装 $tool 需要 tar"
-    local bindir="$HOME/.local/bin" tmpdir arch
+    local bindir="$HOME/.local/bin" tmpdir arch asset
     mkdir -p "$bindir"
     case "$tool" in
         starship)
@@ -223,15 +247,45 @@ install_external() { # install_external <工具名>
             install -m 0755 "$tmpdir/yazi-$arch/ya" "$bindir/ya" || die "ya 安装失败"
             rm -rf "$tmpdir"
             ;;
+        neovim)
+            # GitHub releases 的官方 tarball 解压到 ~/.local/opt/nvim, 二进制软链到
+            # ~/.local/bin/nvim (prepend 后优先于 /usr/bin 的旧版)。nvim 按软链解析出
+            # 真实可执行文件位置, 仍能相对找到同目录下的 runtime。
+            arch="$(uname -m)"
+            case "$arch" in
+                x86_64) asset="nvim-linux-x86_64.tar.gz" ;;
+                aarch64|arm64) asset="nvim-linux-arm64.tar.gz" ;;
+                *) die "neovim 不支持的架构: $arch" ;;
+            esac
+            tmpdir="$(mktemp -d)"
+            log "下载 neovim ($arch)..."
+            if ! curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/$asset" -o "$tmpdir/nvim.tar.gz"; then
+                # 兼容 0.10.3 及更早的旧资产名 (x86_64)
+                asset="nvim-linux64.tar.gz"
+                log "主资产名不可用, 回退: $asset"
+                curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/$asset" -o "$tmpdir/nvim.tar.gz" || die "neovim 下载失败"
+            fi
+            tar -xzf "$tmpdir/nvim.tar.gz" -C "$tmpdir" || die "neovim 解压失败"
+            local extracted
+            extracted="$(find "$tmpdir" -maxdepth 1 -type d -name 'nvim-linux*' | head -n1)" || true
+            [ -n "$extracted" ] || die "neovim 解压目录未找到"
+            rm -rf "$HOME/.local/opt/nvim"
+            mkdir -p "$HOME/.local/opt"
+            mv "$extracted" "$HOME/.local/opt/nvim" || die "neovim 安装失败"
+            ln -sfn "$HOME/.local/opt/nvim/bin/nvim" "$bindir/nvim"
+            rm -rf "$tmpdir"
+            ;;
         *)
             warn "未知外部工具，跳过: $tool"
             return 0
             ;;
     esac
-    if [ -x "$bindir/$tool" ]; then
-        ok "$tool 安装完成: $bindir/$tool"
+    local check="$bindir/$tool"
+    if [ "$tool" = "neovim" ]; then check="$bindir/nvim"; fi
+    if [ -x "$check" ]; then
+        ok "$tool 安装完成: $check"
     else
-        warn "$tool 安装结果未确认, 请检查 $bindir/$tool"
+        warn "$tool 安装结果未确认, 请检查 $check"
     fi
 }
 
@@ -282,6 +336,20 @@ pkg_remove() { # pkg_remove <包名...>
 # 卸载 install_external 安装到 ~/.local 的工具
 remove_external() { # remove_external <工具名>
     local tool="$1" target
+    # neovim 装在 ~/.local/opt/nvim, 二进制名是 nvim (非工具名), 单独处理;
+    # 只清理自装版本, 不动系统 apt/pacman/brew 的 neovim。
+    if [ "$tool" = "neovim" ]; then
+        if [ ! -e "$HOME/.local/opt/nvim" ] && [ ! -e "$HOME/.local/bin/nvim" ]; then
+            log "未安装，跳过: neovim"
+            return 0
+        fi
+        log "卸载外部工具: neovim (仅 ~/.local 自装版本, 保留系统包)"
+        [ -n "$DRY_RUN" ] && return 0
+        if [ -L "$HOME/.local/bin/nvim" ]; then rm -f "$HOME/.local/bin/nvim"; fi
+        if [ -d "$HOME/.local/opt/nvim" ]; then rm -rf "$HOME/.local/opt/nvim"; fi
+        ok "已删除: neovim (~/.local/opt/nvim)"
+        return 0
+    fi
     target="$HOME/.local/bin/$tool"
     if [ ! -e "$target" ] && ! command -v "$tool" >/dev/null 2>&1; then
         log "未安装，跳过: $tool"

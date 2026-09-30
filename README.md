@@ -65,7 +65,7 @@ dotfiles/
 | 文件                                    | 作用                                                                                                           |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `home/`                               | 相对`$HOME` 的配置树，**复制部署**到 `$HOME` 对应路径                                                |
-| `packages.arch` / `packages.ubuntu` / `packages.darwin` | 依赖包清单，每行一个；`aur:` 前缀 = AUR 包（仅 Arch）；`ext:` 前缀 = 仓库缺失的工具（starship/eza/fastfetch），经官方脚本/GitHub releases 装到 `~/.local` |
+| `packages.arch` / `packages.ubuntu` / `packages.darwin` | 依赖包清单，每行一个；`aur:` 前缀 = AUR 包（仅 Arch）；`ext:` 前缀 = 仓库缺失或版本过旧的工具（starship/eza/fastfetch/neovim），经官方脚本/GitHub releases 装到 `~/.local` |
 | `post_install.sh`                     | 可选钩子（被 source 执行）：克隆第三方插件等                                                                   |
 | `module.conf`                         | `MODULE_DESC`（菜单描述）、`CAPTURE_PATHS`（采集来源 `源\|仓库内路径`）、`CAPTURE_EXCLUDES`（采集排除）、`CAPTURE_STRIP`（行级隔离：sed 删除本机安装器写入的块） |
 | `plugins.txt`                         | 自定义清单（zsh 用：`仓库名\|pin 的 commit`）                                                                 |
@@ -85,8 +85,8 @@ dotfiles/
 ## 已知事项
 
 - Ubuntu 上 `fd` 的包名是 `fd-find`（二进制 `fdfind`）、`bat` 的二进制名是 `batcat`（避免与 bacula 的 `bat` 冲突），包清单已区分处理；fish 模块的 post_install 会自动创建 `~/.local/bin/fd` 和 `~/.local/bin/bat` 软链，yazi/lazyvim 等其它用到 `fd` 的模块若未装 fish，可手动 `ln -s $(which fdfind) ~/.local/bin/fd`。
-- 旧版 Ubuntu（22.04 及更早）的 apt 仓库没有 `starship`/`eza`/`fastfetch`/`yazi`，清单里用 `ext:` 前缀标记，安装器会经官方脚本或 GitHub releases 预编译包装到 `~/.local/bin`（fastfetch 的 share 装到 `~/.local/share/fastfetch`；yazi 用 musl 静态构建以避免 glibc 版本不足），两个 shell 均已把 `~/.local/bin` 加入 PATH。`~/.local/bin` 不在 PATH 时需自行加入。
-- Ubuntu 仓库的 neovim 版本较旧，LazyVim 建议从 GitHub releases 或 ppa 安装新版本，再运行本安装器。
+- 旧版 Ubuntu（22.04 及更早）的 apt 仓库没有 `starship`/`eza`/`fastfetch`/`yazi`，清单里用 `ext:` 前缀标记，安装器会经官方脚本或 GitHub releases 预编译包装到 `~/.local`（fastfetch 的 share 装到 `~/.local/share/fastfetch`；yazi 用 musl 静态构建以避免 glibc 版本不足），两个 shell 均已把 `~/.local/bin` 加入 PATH 并置于系统目录之前。`~/.local/bin` 不在 PATH 时需自行加入。
+- Ubuntu 仓库的 neovim 版本偏旧（22.04 自带 0.6.1，24.04 自带 0.9.5），**均低于** LazyVim 要求的 0.10。`packages.ubuntu` 用 `ext:neovim` 标记：安装器先按 `--version` 校验现有 nvim，达不到 0.10 才从 GitHub releases 拉官方 tarball 解压到 `~/.local/opt/nvim`，并软链到 `~/.local/bin/nvim`（因 PATH 前置而覆盖系统旧版）。Arch/macOS 的清单是普通 `neovim`，走各自仓库（已 ≥ 0.10），不经此路径。
 - Ubuntu 22.04 的 apt 自带 fish 3.3.1，太旧（`fzf.fish`/`fifc` 需要 3.4+/3.6+，否则启动报 `set -f` 错误）。fish 模块的 post_install 会自动通过 `ppa:fish-shell/release-3` 升级到 3.7；`fish_plugins` 里把 `fzf.fish` 钉在 `@v9.1`（兼容 fish 3.2+），避免 `fisher update` 拉到要求 fish 4.0 的最新版。
 - `./install.sh` 需要 sudo（装包）；以普通用户运行，不要用 root。
 - macOS 依赖 Homebrew；安装器不会使用 `sudo` 安装 formula。Apple Silicon 与 Intel 均由 Homebrew 自动选择对应架构。
