@@ -134,7 +134,9 @@ capture_module() {
             [ -n "$e" ] && strip_arr+=("$e")
         done <<< "$strip_exprs"
     fi
-    [ "${#strip_arr[@]}" -gt 0 ] && strip_module "$module" "${strip_arr[@]}"
+    if [ "${#strip_arr[@]}" -gt 0 ]; then
+        strip_module "$module" "${strip_arr[@]}"
+    fi
 }
 
 # 行级隔离: 对已采集到仓库的文件删除本机安装器写入的行/块 (LM Studio/jcode 等)
